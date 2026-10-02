@@ -17,11 +17,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <div class="eyebrow">FOOD, ACTUALLY SORTED BY DISTANCE</div>
-      <h1>Nearby Eats</h1>
-    </div>
-    <div class="free-badge">FREE</div>
+    <h1>Nearby Eats</h1>
   </header>
 
   <main>
@@ -156,6 +152,7 @@
       </div>
       <p>Nearby Eats uses OpenStreetMap data through public Overpass API servers. Results are sorted using the straight-line distance from your device location.</p>
       <p>Open Now is evaluated from each place's OpenStreetMap <code>opening_hours</code> data. Places without mapped hours are excluded when that filter is on.</p>
+      <p>Google Maps and Apple Maps buttons open the matching business in those services. Google ratings, reviews, photos, and other Google-specific details stay on Google Maps rather than being copied into Nearby Eats.</p>
       <p>OpenStreetMap is community-maintained, so some businesses or details may be missing or out of date.</p>
       <button class="primary-btn full-width" value="ok">Got it</button>
     </form>
@@ -176,13 +173,14 @@
         </div>
       </div>
       <div class="result-actions">
-        <a class="maps-btn directions-btn" target="_blank" rel="noopener">Directions</a>
-        <a class="maps-btn osm-btn" target="_blank" rel="noopener">OSM details</a>
+        <a class="maps-btn directions-btn" target="_blank" rel="noopener">Apple Maps</a>
+        <a class="maps-btn osm-btn" target="_blank" rel="noopener">Google Maps</a>
       </div>
     </article>
   </template>
 
   <script src="https://openingh.openstreetmap.de/build/opening_hours+deps.min.js"></script>
   <script src="./app.js" defer></script>
+  <script src="./map-links.js" defer></script>
 </body>
 </html>
