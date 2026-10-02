@@ -1,9 +1,10 @@
-const CACHE_NAME = "nearby-eats-v3-map-links";
+const CACHE_NAME = "nearby-eats-v4-geoapify";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./osm.css",
+  "./geoapify-proxy.js",
   "./app.js",
   "./map-links.js",
   "./manifest.webmanifest",
