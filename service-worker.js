@@ -1,9 +1,11 @@
-const CACHE_NAME = "nearby-eats-v2-osm";
+const CACHE_NAME = "nearby-eats-v3-map-links";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./osm.css",
   "./app.js",
+  "./map-links.js",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png",
