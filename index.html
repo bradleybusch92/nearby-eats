@@ -93,7 +93,7 @@
 
       <label class="toggle-row">
         <input id="openNowCheck" type="checkbox">
-        <span>Open now <small>(only where hours are mapped)</small></span>
+        <span>Open now <small>(only where hours are available)</small></span>
       </label>
 
       <div class="filter-group">
@@ -132,7 +132,7 @@
     <section id="emptyState" class="empty-state">
       <div class="empty-icon">⌖</div>
       <h3>Find something close</h3>
-      <p>No account, API key, or payment method. Your browser location is used to query nearby OpenStreetMap food data.</p>
+      <p>Nearby Eats can use a free Geoapify key for fast search, with public OpenStreetMap search as a fallback. No payment method is required.</p>
     </section>
   </main>
 
@@ -150,10 +150,9 @@
         <h2>About these results</h2>
         <button class="icon-btn" value="cancel" aria-label="Close">×</button>
       </div>
-      <p>Nearby Eats uses OpenStreetMap data through public Overpass API servers. Results are sorted using the straight-line distance from your device location.</p>
-      <p>Open Now is evaluated from each place's OpenStreetMap <code>opening_hours</code> data. Places without mapped hours are excluded when that filter is on.</p>
+      <p>Nearby Eats uses Geoapify Places when a free key is connected, with public OpenStreetMap Overpass servers as a fallback. Results are sorted using the straight-line distance from your device location.</p>
+      <p>Open Now is evaluated from available opening-hours data. Places without usable hours are excluded when that filter is on.</p>
       <p>Google Maps and Apple Maps buttons open the matching business in those services. Google ratings, reviews, photos, and other Google-specific details stay on Google Maps rather than being copied into Nearby Eats.</p>
-      <p>OpenStreetMap is community-maintained, so some businesses or details may be missing or out of date.</p>
       <button class="primary-btn full-width" value="ok">Got it</button>
     </form>
   </dialog>
@@ -180,6 +179,7 @@
   </template>
 
   <script src="https://openingh.openstreetmap.de/build/opening_hours+deps.min.js"></script>
+  <script src="./geoapify-proxy.js"></script>
   <script src="./app.js" defer></script>
   <script src="./map-links.js" defer></script>
 </body>
