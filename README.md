@@ -1,57 +1,38 @@
 # Nearby Eats
 
-A mobile-first Progressive Web App (PWA) that finds nearby food, filters the results, and sorts them by actual distance from your device.
+A mobile-first Progressive Web App that finds food around your current location and sorts it by actual distance.
+
+**This version is completely free to operate:** no Google Cloud account, no API key, no billing account, and no payment method.
+
+## Data
+
+Nearby Eats uses community-maintained **OpenStreetMap** food/business data through free public **Overpass API** servers.
 
 ## Features
 
 - iPhone/browser GPS location
-- Google Maps Platform Places data
 - Nearest-first sorting
-- Open Now
-- Search radius
-- Minimum rating
-- Price filters
-- Cuisine/type filters
+- 1–30 mile radius
 - Keyword search
-- Takeout, delivery, dine-in, outdoor seating, and reservation filters
-- Direct links to Google Maps
-- Installable on the iPhone Home Screen
-- API key stored only in the browser's local storage
+- Restaurant / fast food / cafe / pub / bakery filters
+- Cuisine filters where cuisine data is mapped
+- Open Now where `opening_hours` data is mapped
+- Takeout, delivery, outdoor seating, drive-through, reservations, and wheelchair filters where those OSM tags are mapped
+- Apple Maps directions
+- Direct OpenStreetMap detail links
+- Installable to the iPhone Home Screen
+- No API key and no billing
 
-## Google Cloud setup
+## Live site
 
-1. Create or choose a Google Cloud project.
-2. Attach billing.
-3. Enable **Maps JavaScript API** and **Places API (New)**.
-4. Create an API key.
-5. Restrict it to **Websites / HTTP referrers** and allow:
-   - `https://bradleybusch92.github.io/nearby-eats/*`
-6. Restrict the key to:
-   - Maps JavaScript API
-   - Places API (New)
+https://bradleybusch92.github.io/nearby-eats/
 
-Do not commit an unrestricted key to this repository.
+## Limitations
 
-## GitHub Pages
+OpenStreetMap is community-maintained rather than a commercial restaurant directory. Ratings, Google review counts, price levels, and some business/service details are not available consistently. Some businesses or hours may be missing or outdated.
 
-This repository is intended to publish at:
+The app uses free public Overpass servers intended for modest usage. Results are cached in the browser for five minutes to reduce repeat traffic.
 
-`https://bradleybusch92.github.io/nearby-eats/`
+## Attribution
 
-In the repo, go to **Settings → Pages**, choose **Deploy from a branch**, then select `main` and `/ (root)`.
-
-## First launch
-
-1. Open the Pages URL in Safari.
-2. Allow location access.
-3. Tap the gear icon.
-4. Paste the browser-restricted Google Maps API key.
-5. Search.
-
-## Install on iPhone
-
-In Safari: **Share → Add to Home Screen**.
-
-## Limitation
-
-Google's browser Places text search returns up to 20 places per search. That fits the nearest-food use case well, but a future backend version could support broader result sets and other advanced features.
+Map/business data © OpenStreetMap contributors, under the Open Database License.
