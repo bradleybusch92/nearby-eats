@@ -16,9 +16,7 @@
   <link rel="stylesheet" href="./osm.css">
 </head>
 <body>
-  <header class="topbar">
-    <h1>Nearby Eats</h1>
-  </header>
+  <header class="topbar"><h1>Nearby Eats</h1></header>
 
   <main>
     <section class="location-row">
@@ -35,7 +33,6 @@
         <input id="queryInput" type="search" placeholder="tacos, wings, steak, breakfast…" autocomplete="off">
         <button id="searchBtn" class="primary-btn" type="button">Search</button>
       </div>
-
       <div class="quick-row">
         <select id="categorySelect" aria-label="Food category">
           <option value="all">All food</option>
@@ -62,40 +59,16 @@
           <option value="steak">Steak</option>
           <option value="cajun">Cajun / Creole</option>
         </select>
-        <button id="filtersBtn" class="secondary-btn" type="button">
-          Filters <span id="filterCount" class="filter-count" hidden>0</span>
-        </button>
+        <button id="filtersBtn" class="secondary-btn" type="button">Filters <span id="filterCount" class="filter-count" hidden>0</span></button>
       </div>
     </section>
 
     <section id="filtersPanel" class="filters-panel" hidden>
       <div class="filter-grid two-col">
-        <label>
-          <span>Sort</span>
-          <select id="sortSelect">
-            <option value="distance">Nearest first</option>
-            <option value="name">Name A–Z</option>
-          </select>
-        </label>
-
-        <label>
-          <span>Within</span>
-          <select id="radiusSelect">
-            <option value="1">1 mile</option>
-            <option value="2">2 miles</option>
-            <option value="5" selected>5 miles</option>
-            <option value="10">10 miles</option>
-            <option value="20">20 miles</option>
-            <option value="30">30 miles</option>
-          </select>
-        </label>
+        <label><span>Sort</span><select id="sortSelect"><option value="distance">Nearest first</option><option value="name">Name A–Z</option></select></label>
+        <label><span>Within</span><select id="radiusSelect"><option value="1">1 mile</option><option value="2">2 miles</option><option value="5" selected>5 miles</option><option value="10">10 miles</option><option value="20">20 miles</option><option value="30">30 miles</option></select></label>
       </div>
-
-      <label class="toggle-row">
-        <input id="openNowCheck" type="checkbox">
-        <span>Open now <small>(only where hours are available)</small></span>
-      </label>
-
+      <label class="toggle-row"><input id="openNowCheck" type="checkbox"><span>Open now <small>(only where hours are available)</small></span></label>
       <div class="filter-group">
         <div class="filter-title">Services</div>
         <div class="chip-row" id="serviceChips">
@@ -107,50 +80,25 @@
           <label class="check-chip"><input type="checkbox" value="wheelchair"><span>Wheelchair access</span></label>
         </div>
       </div>
-
-      <div class="filter-actions">
-        <button id="clearFiltersBtn" class="text-btn" type="button">Clear filters</button>
-        <button id="applyFiltersBtn" class="primary-btn" type="button">Apply</button>
-      </div>
+      <div class="filter-actions"><button id="clearFiltersBtn" class="text-btn" type="button">Clear filters</button><button id="applyFiltersBtn" class="primary-btn" type="button">Apply</button></div>
     </section>
 
-    <section id="installTip" class="install-tip" hidden>
-      <strong>Install it like an app:</strong> in Safari, tap Share → Add to Home Screen.
-      <button id="dismissInstallTip" class="text-btn" type="button">Dismiss</button>
-    </section>
+    <section id="installTip" class="install-tip" hidden><strong>Install it like an app:</strong> in Safari, tap Share → Add to Home Screen. <button id="dismissInstallTip" class="text-btn" type="button">Dismiss</button></section>
 
     <section class="results-header">
-      <div>
-        <h2 id="resultsTitle">Nearby food</h2>
-        <div id="resultsMeta" class="results-meta">Allow location access, then search.</div>
-      </div>
+      <div><h2 id="resultsTitle">Nearby food</h2><div id="resultsMeta" class="results-meta">Allow location access, then search.</div></div>
       <a class="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a>
     </section>
-
     <section id="results" class="results" aria-live="polite"></section>
-
-    <section id="emptyState" class="empty-state">
-      <div class="empty-icon">⌖</div>
-      <h3>Find something close</h3>
-      <p>Nearby Eats can use a free Geoapify key for fast search, with public OpenStreetMap search as a fallback. No payment method is required.</p>
-    </section>
+    <section id="emptyState" class="empty-state"><div class="empty-icon">⌖</div><h3>Find something close</h3><p>Nearby Eats can combine TomTom and Geoapify place data, with OpenStreetMap as a fallback. No payment method is required.</p></section>
   </main>
 
-  <footer class="footer">
-    <a href="./privacy.html">Privacy</a>
-    <span>•</span>
-    <a href="./terms.html">Terms</a>
-    <span>•</span>
-    <button id="aboutResultsBtn" class="footer-button" type="button">About results</button>
-  </footer>
+  <footer class="footer"><a href="./privacy.html">Privacy</a><span>•</span><a href="./terms.html">Terms</a><span>•</span><button id="aboutResultsBtn" class="footer-button" type="button">About results</button></footer>
 
   <dialog id="aboutResultsDialog">
     <form method="dialog" class="dialog-card">
-      <div class="dialog-head">
-        <h2>About these results</h2>
-        <button class="icon-btn" value="cancel" aria-label="Close">×</button>
-      </div>
-      <p>Nearby Eats uses Geoapify Places when a free key is connected, with public OpenStreetMap Overpass servers as a fallback. Results are sorted using the straight-line distance from your chosen search origin.</p>
+      <div class="dialog-head"><h2>About these results</h2><button class="icon-btn" value="cancel" aria-label="Close">×</button></div>
+      <p>Nearby Eats can merge TomTom and Geoapify place results, with public OpenStreetMap Overpass servers as a fallback. Results are sorted using straight-line distance from your chosen search origin.</p>
       <p>You can search from your current device location or type an address, city, ZIP code, hotel, or other place to use as the center point.</p>
       <p>Open Now is evaluated from available opening-hours data. Places without usable hours are excluded when that filter is on.</p>
       <p>Google, Yelp, TripAdvisor, and Apple Maps buttons open the matching business in those services. Their ratings and reviews stay on their own sites rather than being copied into Nearby Eats.</p>
@@ -160,27 +108,14 @@
 
   <template id="resultTemplate">
     <article class="place-card">
-      <div class="place-main">
-        <div class="place-rank"></div>
-        <div class="place-info">
-          <div class="place-topline">
-            <h3 class="place-name"></h3>
-            <div class="distance-badge"></div>
-          </div>
-          <div class="place-details"></div>
-          <div class="place-address"></div>
-          <div class="place-tags"></div>
-        </div>
-      </div>
-      <div class="result-actions">
-        <a class="maps-btn directions-btn" target="_blank" rel="noopener">Apple Maps</a>
-        <a class="maps-btn osm-btn" target="_blank" rel="noopener">Google Reviews</a>
-      </div>
+      <div class="place-main"><div class="place-rank"></div><div class="place-info"><div class="place-topline"><h3 class="place-name"></h3><div class="distance-badge"></div></div><div class="place-details"></div><div class="place-address"></div><div class="place-tags"></div></div></div>
+      <div class="result-actions"><a class="maps-btn directions-btn" target="_blank" rel="noopener">Apple Maps</a><a class="maps-btn osm-btn" target="_blank" rel="noopener">Google Reviews</a></div>
     </article>
   </template>
 
   <script src="https://openingh.openstreetmap.de/build/opening_hours+deps.min.js"></script>
   <script src="./geoapify-proxy.js"></script>
+  <script src="./tomtom-proxy.js"></script>
   <script src="./app.js" defer></script>
   <script src="./address-search.js" defer></script>
   <script src="./map-links.js" defer></script>
