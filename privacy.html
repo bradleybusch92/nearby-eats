@@ -10,13 +10,14 @@
   <main>
     <section class="search-panel">
       <h1>Privacy</h1>
-      <p>Nearby Eats is a personal web app. It does not run its own analytics, advertising, user accounts, or developer-operated database.</p>
+      <p>Nearby Eats is a static personal web app. It has no user accounts, advertising, analytics, developer-operated database, API key, or payment system.</p>
       <h2>Location</h2>
-      <p>If you grant location permission, your browser supplies your current coordinates to the app. Those coordinates are used to request nearby place results from Google Maps Platform. The app does not intentionally persist your coordinates to its own storage.</p>
-      <h2>Google Maps Platform</h2>
-      <p>Searches use Google Maps Platform. Google may process request information under the Google Privacy Policy: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>.</p>
-      <h2>API key</h2>
-      <p>Your Google Maps API key is saved in this browser's local storage when you choose Save Key. It is not embedded in the app's GitHub source files by default. You can remove it from the Settings screen.</p>
+      <p>If you grant location permission, your browser supplies your current coordinates to the app. They are used to request nearby food data from public OpenStreetMap Overpass API servers. Nearby Eats does not intentionally store your precise coordinates permanently.</p>
+      <h2>OpenStreetMap / Overpass</h2>
+      <p>Search requests are sent directly from your browser to a public Overpass API service. Those services receive normal network information such as your IP address and the website referrer as part of serving the request.</p>
+      <h2>Local storage</h2>
+      <p>The app may remember small interface preferences and uses short-lived browser session caching to avoid repeatedly downloading the same nearby data.</p>
+      <p>Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>.</p>
       <p><a href="./">← Back to Nearby Eats</a></p>
     </section>
   </main>

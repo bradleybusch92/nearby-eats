@@ -1,4 +1,4 @@
-const CACHE_NAME = "nearby-eats-v1";
+const CACHE_NAME = "nearby-eats-v2-osm";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -27,13 +27,7 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
-
-  // Do not cache Google Maps Platform calls.
-  if (url.hostname.includes("googleapis.com") || url.hostname.includes("google.com") || url.hostname.includes("gstatic.com")) {
-    return;
-  }
-
-  if (event.request.method !== "GET") return;
+  if (url.origin !== self.location.origin || event.request.method !== "GET") return;
 
   event.respondWith(
     fetch(event.request)

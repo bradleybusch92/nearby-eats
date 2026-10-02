@@ -1,61 +1,101 @@
 (() => {
   "use strict";
 
-  const KEY_STORAGE = "nearbyEatsGoogleMapsKey";
   const INSTALL_DISMISSED = "nearbyEatsInstallTipDismissed";
+  const OLD_GOOGLE_KEY = "nearbyEatsGoogleMapsKey";
+  const CACHE_PREFIX = "nearbyEatsOSM:";
+  const CACHE_TTL_MS = 5 * 60 * 1000;
+
+  const OVERPASS_ENDPOINTS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
+  ];
 
   const els = {};
   let userLocation = null;
-  let googleReady = false;
-  let placesLib = null;
+  let lastRawPlaces = [];
+  let lastRadiusMiles = 5;
 
-  const categoryLabels = {
-    "": "restaurants",
-    restaurant: "restaurants",
-    fast_food_restaurant: "fast food",
-    american_restaurant: "American restaurants",
-    barbecue_restaurant: "BBQ",
-    breakfast_restaurant: "breakfast",
-    brunch_restaurant: "brunch",
-    hamburger_restaurant: "burgers",
-    chicken_wings_restaurant: "wings",
-    mexican_restaurant: "Mexican food",
-    taco_restaurant: "tacos",
-    pizza_restaurant: "pizza",
-    chinese_restaurant: "Chinese food",
-    japanese_restaurant: "Japanese food",
-    sushi_restaurant: "sushi",
-    thai_restaurant: "Thai food",
-    indian_restaurant: "Indian food",
-    italian_restaurant: "Italian food",
-    seafood_restaurant: "seafood",
-    steak_house: "steakhouse",
-    cajun_restaurant: "Cajun food",
-    cafe: "cafes",
-    coffee_shop: "coffee",
-    bakery: "bakeries",
-    bar_and_grill: "bar and grill",
-    pub: "pub food",
-    sports_bar: "sports bars"
+  const serviceTests = {
+    takeaway: tags => ["yes", "only"].includes((tags.takeaway || "").toLowerCase()),
+    delivery: tags => ["yes", "only"].includes((tags.delivery || "").toLowerCase()),
+    outdoor: tags => (tags.outdoor_seating || "").toLowerCase() === "yes",
+    drive_through: tags => (tags.drive_through || "").toLowerCase() === "yes",
+    reservations: tags => ["yes", "required", "recommended"].includes((tags.reservation || "").toLowerCase()),
+    wheelchair: tags => (tags.wheelchair || "").toLowerCase() === "yes"
   };
 
-  const serviceFieldMap = {
-    takeout: { field: "hasTakeout", label: "Takeout" },
-    delivery: { field: "hasDelivery", label: "Delivery" },
-    dinein: { field: "hasDineIn", label: "Dine-in" },
-    outdoor: { field: "hasOutdoorSeating", label: "Outdoor seating" },
-    reservable: { field: "isReservable", label: "Reservations" }
+  const serviceLabels = {
+    takeaway: "Takeout",
+    delivery: "Delivery",
+    outdoor: "Outdoor seating",
+    drive_through: "Drive-through",
+    reservations: "Reservations",
+    wheelchair: "Wheelchair access"
+  };
+
+  const categoryCuisineMatchers = {
+    american: ["american", "southern", "regional"],
+    barbecue: ["barbecue", "bbq"],
+    breakfast: ["breakfast", "brunch"],
+    burger: ["burger", "hamburger"],
+    chicken: ["chicken", "wings", "chicken_wings"],
+    mexican: ["mexican", "tex-mex", "tex_mex"],
+    tacos: ["tacos", "taco"],
+    pizza: ["pizza"],
+    chinese: ["chinese"],
+    japanese: ["japanese"],
+    sushi: ["sushi"],
+    thai: ["thai"],
+    indian: ["indian"],
+    italian: ["italian"],
+    seafood: ["seafood", "fish"],
+    steak: ["steak", "steak_house", "steakhouse"],
+    cajun: ["cajun", "creole"]
   };
 
   function cacheEls() {
     [
-      "settingsBtn","locateBtn","locationStatus","queryInput","searchBtn","categorySelect",
-      "filtersBtn","filterCount","filtersPanel","sortSelect","radiusSelect","ratingSelect",
-      "openNowCheck","priceChips","serviceChips","clearFiltersBtn","applyFiltersBtn",
-      "resultsTitle","resultsMeta","results","emptyState","settingsDialog","settingsForm",
-      "apiKeyInput","removeKeyBtn","saveKeyBtn","aboutResultsBtn","aboutResultsDialog",
-      "installTip","dismissInstallTip","resultTemplate"
+      "locateBtn", "locationStatus", "queryInput", "searchBtn", "categorySelect",
+      "filtersBtn", "filterCount", "filtersPanel", "sortSelect", "radiusSelect",
+      "openNowCheck", "serviceChips", "clearFiltersBtn", "applyFiltersBtn",
+      "resultsMeta", "results", "emptyState", "aboutResultsBtn", "aboutResultsDialog",
+      "installTip", "dismissInstallTip", "resultTemplate"
     ].forEach(id => els[id] = document.getElementById(id));
+  }
+
+  function bindEvents() {
+    els.locateBtn.addEventListener("click", () => locateUser(true));
+    els.searchBtn.addEventListener("click", () => runSearch(true));
+    els.queryInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") runSearch(true);
+    });
+    els.categorySelect.addEventListener("change", () => {
+      if (lastRawPlaces.length) applyAndRender();
+    });
+    els.filtersBtn.addEventListener("click", () => {
+      els.filtersPanel.hidden = !els.filtersPanel.hidden;
+    });
+    els.applyFiltersBtn.addEventListener("click", async () => {
+      els.filtersPanel.hidden = true;
+      updateFilterCount();
+      const radiusChanged = Number(els.radiusSelect.value) !== lastRadiusMiles;
+      if (radiusChanged) await runSearch(true);
+      else applyAndRender();
+    });
+    els.clearFiltersBtn.addEventListener("click", clearFilters);
+    els.aboutResultsBtn.addEventListener("click", () => els.aboutResultsDialog.showModal());
+    els.dismissInstallTip.addEventListener("click", () => {
+      localStorage.setItem(INSTALL_DISMISSED, "1");
+      els.installTip.hidden = true;
+    });
+
+    document.querySelectorAll("#serviceChips input").forEach(el => {
+      el.addEventListener("change", updateFilterCount);
+    });
+    [els.sortSelect, els.radiusSelect, els.openNowCheck].forEach(el => {
+      el.addEventListener("change", updateFilterCount);
+    });
   }
 
   function isIOS() {
@@ -72,135 +112,33 @@
     }
   }
 
-  function bindEvents() {
-    els.settingsBtn.addEventListener("click", openSettings);
-    els.locateBtn.addEventListener("click", locateUser);
-    els.searchBtn.addEventListener("click", runSearch);
-    els.queryInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") runSearch();
-    });
-    els.filtersBtn.addEventListener("click", () => {
-      els.filtersPanel.hidden = !els.filtersPanel.hidden;
-    });
-    els.applyFiltersBtn.addEventListener("click", () => {
-      els.filtersPanel.hidden = true;
-      updateFilterCount();
-      runSearch();
-    });
-    els.clearFiltersBtn.addEventListener("click", clearFilters);
-    els.saveKeyBtn.addEventListener("click", saveApiKey);
-    els.removeKeyBtn.addEventListener("click", removeApiKey);
-    els.aboutResultsBtn.addEventListener("click", () => els.aboutResultsDialog.showModal());
-    els.dismissInstallTip.addEventListener("click", () => {
-      localStorage.setItem(INSTALL_DISMISSED, "1");
-      els.installTip.hidden = true;
-    });
-
-    document.querySelectorAll("#priceChips input, #serviceChips input").forEach(el => {
-      el.addEventListener("change", updateFilterCount);
-    });
-    [els.sortSelect, els.radiusSelect, els.ratingSelect, els.openNowCheck].forEach(el => {
-      el.addEventListener("change", updateFilterCount);
-    });
-  }
-
   function clearFilters() {
     els.sortSelect.value = "distance";
     els.radiusSelect.value = "5";
-    els.ratingSelect.value = "0";
     els.openNowCheck.checked = false;
-    document.querySelectorAll("#priceChips input, #serviceChips input").forEach(el => el.checked = false);
+    document.querySelectorAll("#serviceChips input").forEach(el => el.checked = false);
     updateFilterCount();
+    if (lastRawPlaces.length) {
+      if (lastRadiusMiles !== 5) runSearch(true);
+      else applyAndRender();
+    }
   }
 
   function updateFilterCount() {
     let count = 0;
     if (els.sortSelect.value !== "distance") count++;
     if (els.radiusSelect.value !== "5") count++;
-    if (els.ratingSelect.value !== "0") count++;
     if (els.openNowCheck.checked) count++;
-    count += document.querySelectorAll("#priceChips input:checked").length;
     count += document.querySelectorAll("#serviceChips input:checked").length;
     els.filterCount.textContent = String(count);
     els.filterCount.hidden = count === 0;
   }
 
-  function openSettings() {
-    els.apiKeyInput.value = localStorage.getItem(KEY_STORAGE) || "";
-    els.settingsDialog.showModal();
+  function selectedServices() {
+    return [...document.querySelectorAll("#serviceChips input:checked")].map(x => x.value);
   }
 
-  function saveApiKey() {
-    const key = els.apiKeyInput.value.trim();
-    if (!key) return;
-    localStorage.setItem(KEY_STORAGE, key);
-    els.settingsDialog.close();
-    if (!googleReady) {
-      loadGoogleMaps(key)
-        .then(() => {
-          setMeta("Google Places is ready.");
-          if (userLocation) runSearch();
-        })
-        .catch(showGoogleLoadError);
-    }
-  }
-
-  function removeApiKey() {
-    localStorage.removeItem(KEY_STORAGE);
-    els.apiKeyInput.value = "";
-    alert("API key removed from this browser. Reload the app before entering a different key.");
-  }
-
-  function loadGoogleMaps(key) {
-    if (googleReady && window.google?.maps) return Promise.resolve();
-
-    return new Promise((resolve, reject) => {
-      if (window.google?.maps) {
-        googleReady = true;
-        resolve();
-        return;
-      }
-
-      const existing = document.querySelector('script[data-nearby-eats-google]');
-      if (existing) {
-        existing.addEventListener("load", () => {
-          googleReady = true;
-          resolve();
-        }, { once: true });
-        existing.addEventListener("error", reject, { once: true });
-        return;
-      }
-
-      window.__nearbyEatsGoogleLoaded = async () => {
-        try {
-          placesLib = await google.maps.importLibrary("places");
-          googleReady = true;
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      };
-
-      const script = document.createElement("script");
-      script.dataset.nearbyEatsGoogle = "1";
-      script.async = true;
-      script.defer = true;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&loading=async&callback=__nearbyEatsGoogleLoaded`;
-      script.onerror = () => reject(new Error("Google Maps JavaScript API failed to load."));
-      document.head.appendChild(script);
-    });
-  }
-
-  function showGoogleLoadError(err) {
-    console.error(err);
-    els.results.innerHTML = `<div class="error-card">
-      Google Maps could not load. Check that the API key is valid, billing is enabled,
-      and the key allows this website under its HTTP referrer restrictions.
-    </div>`;
-    els.emptyState.hidden = true;
-  }
-
-  function locateUser() {
+  function locateUser(searchAfter = false) {
     if (!navigator.geolocation) {
       els.locationStatus.textContent = "Location is not supported by this browser.";
       return;
@@ -219,7 +157,7 @@
           ? `±${Math.round(accuracyMeters * 3.28084)} ft`
           : `±${(accuracyMeters / 1609.344).toFixed(1)} mi`;
         els.locationStatus.textContent = `Location ready • ${accuracyText}`;
-        if (localStorage.getItem(KEY_STORAGE)) runSearch();
+        if (searchAfter || !lastRawPlaces.length) runSearch(false);
       },
       err => {
         const messages = {
@@ -233,24 +171,68 @@
     );
   }
 
-  function selectedPriceLevels() {
-    return [...document.querySelectorAll("#priceChips input:checked")].map(x => x.value);
+  function buildOverpassQuery(lat, lng, radiusMeters) {
+    const a = `${radiusMeters},${lat.toFixed(6)},${lng.toFixed(6)}`;
+    return `[out:json][timeout:20];\n(` +
+      `nwr["amenity"~"^(restaurant|fast_food|cafe|food_court|pub|bar|biergarten|ice_cream)$"](around:${a});` +
+      `nwr["shop"="bakery"](around:${a});` +
+      `);\nout center tags qt;`;
   }
 
-  function selectedServices() {
-    return [...document.querySelectorAll("#serviceChips input:checked")].map(x => x.value);
+  function cacheKey(radiusMiles) {
+    const lat = userLocation.lat.toFixed(3);
+    const lng = userLocation.lng.toFixed(3);
+    return `${CACHE_PREFIX}${lat},${lng}:${radiusMiles}`;
   }
 
-  function getBoundsForRadius(lat, lng, miles) {
-    const earthRadiusMiles = 3958.7613;
-    const latDelta = (miles / earthRadiusMiles) * (180 / Math.PI);
-    const lngDelta = latDelta / Math.max(Math.cos(lat * Math.PI / 180), 0.01);
-    return {
-      north: Math.min(90, lat + latDelta),
-      south: Math.max(-90, lat - latDelta),
-      east: Math.min(180, lng + lngDelta),
-      west: Math.max(-180, lng - lngDelta)
-    };
+  function readCache(radiusMiles) {
+    try {
+      const raw = sessionStorage.getItem(cacheKey(radiusMiles));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.time || Date.now() - parsed.time > CACHE_TTL_MS) return null;
+      return parsed.elements || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCache(radiusMiles, elements) {
+    try {
+      sessionStorage.setItem(cacheKey(radiusMiles), JSON.stringify({ time: Date.now(), elements }));
+    } catch { }
+  }
+
+  async function fetchOverpass(query) {
+    let lastError = null;
+    for (const endpoint of OVERPASS_ENDPOINTS) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 18000);
+        const url = `${endpoint}?data=${encodeURIComponent(query)}`;
+        const response = await fetch(url, {
+          method: "GET",
+          headers: { "Accept": "application/json" },
+          cache: "no-store",
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (!response.ok) throw new Error(`Overpass returned HTTP ${response.status}`);
+        const data = await response.json();
+        if (!Array.isArray(data.elements)) throw new Error("Unexpected Overpass response");
+        return data.elements;
+      } catch (err) {
+        lastError = err;
+        console.warn("Overpass endpoint failed:", endpoint, err);
+      }
+    }
+    throw lastError || new Error("The free OpenStreetMap search servers are temporarily unavailable.");
+  }
+
+  function elementLatLng(el) {
+    const lat = el.lat ?? el.center?.lat;
+    const lng = el.lon ?? el.center?.lon;
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
   }
 
   function haversineMiles(a, b) {
@@ -265,233 +247,235 @@
     return 2 * R * Math.asin(Math.sqrt(h));
   }
 
-  function placeLatLng(place) {
-    if (!place.location) return null;
-    const lat = typeof place.location.lat === "function" ? place.location.lat() : place.location.lat;
-    const lng = typeof place.location.lng === "function" ? place.location.lng() : place.location.lng;
-    return { lat, lng };
+  function normalizeElement(el) {
+    const ll = elementLatLng(el);
+    if (!ll) return null;
+    const tags = el.tags || {};
+    const name = tags.name || tags.brand || tags.operator || "Unnamed food place";
+    return {
+      id: `${el.type}/${el.id}`,
+      osmType: el.type,
+      osmId: el.id,
+      lat: ll.lat,
+      lng: ll.lng,
+      tags,
+      name,
+      distance: haversineMiles(userLocation, ll)
+    };
   }
 
-  function buildTextQuery() {
-    const typed = els.queryInput.value.trim();
-    if (typed) return typed;
-    return categoryLabels[els.categorySelect.value] || "restaurants";
+  function uniquePlaces(elements) {
+    const map = new Map();
+    for (const el of elements) {
+      const p = normalizeElement(el);
+      if (!p) continue;
+      const coarse = `${p.name.toLowerCase()}|${p.lat.toFixed(4)}|${p.lng.toFixed(4)}`;
+      const existing = map.get(coarse);
+      if (!existing || Object.keys(p.tags).length > Object.keys(existing.tags).length) map.set(coarse, p);
+    }
+    return [...map.values()];
   }
 
-  async function runSearch() {
+  async function runSearch(forceNetwork = false) {
     if (!userLocation) {
-      locateUser();
+      locateUser(true);
       return;
     }
 
-    const key = localStorage.getItem(KEY_STORAGE);
-    if (!key) {
-      openSettings();
-      return;
-    }
+    const radiusMiles = Number(els.radiusSelect.value);
+    const radiusMeters = Math.round(radiusMiles * 1609.344);
+    lastRadiusMiles = radiusMiles;
+    setLoading();
 
     try {
-      if (!googleReady) await loadGoogleMaps(key);
-      if (!placesLib) placesLib = await google.maps.importLibrary("places");
-
-      const { Place, SearchByTextRankPreference, PriceLevel } = placesLib;
-      const radiusMiles = Number(els.radiusSelect.value);
-      const minRating = Number(els.ratingSelect.value);
-      const serviceFilters = selectedServices();
-      const requestedPriceLevels = selectedPriceLevels();
-
-      const fields = [
-        "displayName",
-        "formattedAddress",
-        "location",
-        "googleMapsURI",
-        "rating",
-        "userRatingCount",
-        "priceLevel",
-        "primaryTypeDisplayName",
-        "businessStatus"
-      ];
-
-      for (const service of serviceFilters) {
-        const f = serviceFieldMap[service]?.field;
-        if (f && !fields.includes(f)) fields.push(f);
+      let elements = forceNetwork ? null : readCache(radiusMiles);
+      let source = "live";
+      if (!elements) {
+        const query = buildOverpassQuery(userLocation.lat, userLocation.lng, radiusMeters);
+        elements = await fetchOverpass(query);
+        writeCache(radiusMiles, elements);
+      } else {
+        source = "cached";
       }
 
-      const request = {
-        textQuery: buildTextQuery(),
-        fields,
-        locationRestriction: getBoundsForRadius(userLocation.lat, userLocation.lng, radiusMiles),
-        isOpenNow: els.openNowCheck.checked,
-        language: "en-US",
-        region: "us",
-        maxResultCount: 20,
-        rankPreference: els.sortSelect.value === "relevance"
-          ? SearchByTextRankPreference.RELEVANCE
-          : SearchByTextRankPreference.DISTANCE
-      };
-
-      if (els.categorySelect.value) {
-        request.includedType = els.categorySelect.value;
-        request.useStrictTypeFiltering = false;
-      }
-
-      if (minRating > 0) request.minRating = minRating;
-      if (requestedPriceLevels.length) {
-        request.priceLevels = requestedPriceLevels
-          .map(level => PriceLevel[level])
-          .filter(Boolean);
-      }
-
-      setLoading();
-      const { places } = await Place.searchByText(request);
-
-      let rows = (places || []).map(place => {
-        const ll = placeLatLng(place);
-        return {
-          place,
-          distance: ll ? haversineMiles(userLocation, ll) : Infinity
-        };
-      });
-
-      // Exact circular radius filter. Google receives a bounding rectangle.
-      rows = rows.filter(row => row.distance <= radiusMiles + 0.001);
-
-      // Optional service filters are client-side because SearchByText does not
-      // expose request parameters for these service attributes.
-      if (serviceFilters.length) {
-        rows = rows.filter(({ place }) =>
-          serviceFilters.every(service => place[serviceFieldMap[service].field] === true)
-        );
-      }
-
-      if (els.sortSelect.value === "distance") {
-        rows.sort((a, b) => a.distance - b.distance);
-      } else if (els.sortSelect.value === "rating") {
-        rows.sort((a, b) =>
-          (b.place.rating || 0) - (a.place.rating || 0) ||
-          (b.place.userRatingCount || 0) - (a.place.userRatingCount || 0) ||
-          a.distance - b.distance
-        );
-      }
-
-      renderResults(rows, radiusMiles, serviceFilters.length > 0);
+      lastRawPlaces = uniquePlaces(elements)
+        .filter(p => p.distance <= radiusMiles + 0.02);
+      applyAndRender(source);
     } catch (err) {
       console.error(err);
-      let msg = err?.message || String(err);
-      if (/referer|referrer|ApiTargetBlockedMapError|REQUEST_DENIED/i.test(msg)) {
-        msg += " Check the API key's Website/HTTP referrer restriction and enabled APIs.";
-      }
-      els.results.innerHTML = `<div class="error-card"><strong>Search failed.</strong><br>${escapeHtml(msg)}</div>`;
       els.emptyState.hidden = true;
+      els.results.innerHTML = `<div class="error-card"><strong>Free map search is temporarily unavailable.</strong><br>${escapeHtml(err?.message || String(err))}<br><br>Try Search again in a moment.</div>`;
       setMeta("Search error.");
     }
   }
 
-  function setLoading() {
-    els.emptyState.hidden = true;
-    els.results.innerHTML = `<div class="loading-card"><span class="spinner"></span>Searching nearby places…</div>`;
-    setMeta("Searching Google Maps…");
+  function parseCuisine(tags) {
+    return (tags.cuisine || "")
+      .toLowerCase()
+      .split(/[;,]/)
+      .map(x => x.trim())
+      .filter(Boolean);
   }
 
-  function setMeta(text) {
-    els.resultsMeta.textContent = text;
+  function categoryMatches(place, category) {
+    if (category === "all") return true;
+    const tags = place.tags;
+    const amenity = (tags.amenity || "").toLowerCase();
+    const shop = (tags.shop || "").toLowerCase();
+    const cuisines = parseCuisine(tags);
+    const haystack = [place.name.toLowerCase(), ...cuisines].join(" ");
+
+    if (category === "restaurant") return amenity === "restaurant";
+    if (category === "fast_food") return amenity === "fast_food";
+    if (category === "cafe") return amenity === "cafe" || cuisines.includes("coffee_shop") || haystack.includes("coffee");
+    if (category === "bar_pub") return ["bar", "pub", "biergarten"].includes(amenity);
+    if (category === "bakery") return shop === "bakery" || cuisines.includes("bakery");
+
+    const matchers = categoryCuisineMatchers[category] || [];
+    return matchers.some(term => haystack.includes(term.replaceAll("_", " ")) || cuisines.includes(term));
   }
 
-  function renderResults(rows, radiusMiles, serviceFiltered) {
+  function keywordMatches(place, query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    const t = place.tags;
+    const fields = [
+      place.name, t.brand, t.operator, t.cuisine, t.amenity, t.shop,
+      t["addr:street"], t["addr:city"], t.description
+    ].filter(Boolean).join(" ").toLowerCase();
+    return q.split(/\s+/).every(word => fields.includes(word));
+  }
+
+  function openingState(place) {
+    const raw = place.tags.opening_hours;
+    if (!raw) return { known: false, open: false, label: "Hours unknown" };
+
+    if (raw.trim() === "24/7") return { known: true, open: true, label: "Open 24/7" };
+
+    if (typeof window.opening_hours !== "function") {
+      return { known: false, open: false, label: "Hours listed" };
+    }
+
+    try {
+      const oh = new window.opening_hours(raw, null, { tag_key: "opening_hours" });
+      const unknown = oh.getUnknown();
+      if (unknown) return { known: false, open: false, label: "Hours uncertain" };
+      const open = oh.getState();
+      return { known: true, open, label: open ? "Open now" : "Closed now" };
+    } catch {
+      return { known: false, open: false, label: "Hours listed" };
+    }
+  }
+
+  function applyAndRender(source = "filtered") {
+    const category = els.categorySelect.value;
+    const query = els.queryInput.value;
+    const services = selectedServices();
+    const requireOpen = els.openNowCheck.checked;
+
+    let rows = lastRawPlaces.filter(place => {
+      if (!categoryMatches(place, category)) return false;
+      if (!keywordMatches(place, query)) return false;
+      if (!services.every(s => serviceTests[s]?.(place.tags))) return false;
+      if (requireOpen) {
+        const state = openingState(place);
+        if (!state.known || !state.open) return false;
+      }
+      return true;
+    });
+
+    if (els.sortSelect.value === "name") {
+      rows.sort((a, b) => a.name.localeCompare(b.name) || a.distance - b.distance);
+    } else {
+      rows.sort((a, b) => a.distance - b.distance);
+    }
+
+    renderResults(rows, source);
+  }
+
+  function formatType(place) {
+    const t = place.tags;
+    const items = [];
+    if (t.cuisine) {
+      const readable = t.cuisine.split(/[;,]/).slice(0, 3).map(titleCaseTag).join(", ");
+      if (readable) items.push(readable);
+    }
+    if (!items.length && t.shop === "bakery") items.push("Bakery");
+    if (!items.length && t.amenity) items.push(titleCaseTag(t.amenity));
+    return items.join(" • ");
+  }
+
+  function titleCaseTag(v) {
+    return String(v).replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function formatAddress(tags) {
+    const line1 = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
+    const line2 = [tags["addr:city"], tags["addr:state"], tags["addr:postcode"]].filter(Boolean).join(" ");
+    return [line1, line2].filter(Boolean).join(" • ");
+  }
+
+  function renderResults(rows, source) {
     els.results.innerHTML = "";
     els.emptyState.hidden = true;
 
     if (!rows.length) {
-      els.results.innerHTML = `<div class="error-card">
-        No matching places were returned within ${radiusMiles} mile${radiusMiles === 1 ? "" : "s"}.
-        Try increasing the distance or loosening a filter.
-      </div>`;
+      els.results.innerHTML = `<div class="error-card">No matching places were found. Try increasing the radius, choosing All food, or loosening a filter. Open Now only includes places with usable hours in OpenStreetMap.</div>`;
       setMeta("No matches.");
       return;
     }
 
-    rows.forEach((row, i) => {
-      const { place, distance } = row;
+    const services = selectedServices();
+
+    rows.forEach((place, i) => {
       const frag = els.resultTemplate.content.cloneNode(true);
-      const card = frag.querySelector(".place-card");
-
       frag.querySelector(".place-rank").textContent = i + 1;
-      frag.querySelector(".place-name").textContent = place.displayName || "Unnamed place";
-      frag.querySelector(".distance-badge").textContent = formatDistance(distance);
+      frag.querySelector(".place-name").textContent = place.name;
+      frag.querySelector(".distance-badge").textContent = formatDistance(place.distance);
 
-      const details = [];
-      if (place.rating) {
-        const count = place.userRatingCount ? ` (${Number(place.userRatingCount).toLocaleString()})` : "";
-        details.push(`★ ${place.rating.toFixed(1)}${count}`);
-      }
-      const price = priceSymbols(place.priceLevel);
-      if (price) details.push(price);
-      if (place.primaryTypeDisplayName) details.push(place.primaryTypeDisplayName);
-      frag.querySelector(".place-details").textContent = details.join(" • ");
+      const details = frag.querySelector(".place-details");
+      details.textContent = formatType(place) || "Food / drink";
 
-      const tags = frag.querySelector(".place-tags");
-      if (els.openNowCheck.checked) tags.appendChild(makeTag("Open now", "open"));
-      for (const service of selectedServices()) {
-        const cfg = serviceFieldMap[service];
-        if (place[cfg.field] === true) tags.appendChild(makeTag(cfg.label));
-      }
-      if (!tags.children.length) tags.remove();
+      const address = formatAddress(place.tags);
+      const addressEl = frag.querySelector(".place-address");
+      if (address) addressEl.textContent = address;
+      else addressEl.remove();
 
-      const providers = frag.querySelector(".provider-attributions");
-      if (place.attributions?.length) {
-        place.attributions.forEach(attr => {
-          if (!attr?.provider) return;
-          const prefix = document.createTextNode("Data: ");
-          providers.appendChild(prefix);
-          if (attr.providerURI) {
-            const a = document.createElement("a");
-            a.href = attr.providerURI;
-            a.target = "_blank";
-            a.rel = "noopener";
-            a.textContent = attr.provider;
-            providers.appendChild(a);
-          } else {
-            providers.appendChild(document.createTextNode(attr.provider));
-          }
-          providers.appendChild(document.createTextNode(" "));
-        });
-      } else {
-        providers.remove();
+      const tagsEl = frag.querySelector(".place-tags");
+      const state = openingState(place);
+      tagsEl.appendChild(makeTag(state.label, state.known && state.open ? "open" : ""));
+
+      if (place.tags.opening_hours && place.tags.opening_hours !== "24/7") {
+        tagsEl.appendChild(makeTag(place.tags.opening_hours));
       }
 
-      const mapsBtn = frag.querySelector(".maps-btn");
-      mapsBtn.href = place.googleMapsURI || buildFallbackMapsUrl(place.displayName, place.formattedAddress);
-      mapsBtn.setAttribute("aria-label", `Open ${place.displayName || "place"} in Google Maps`);
-
-      if (place.formattedAddress) {
-        const addr = document.createElement("div");
-        addr.className = "place-details";
-        addr.textContent = place.formattedAddress;
-        frag.querySelector(".place-info").insertBefore(addr, frag.querySelector(".place-tags"));
+      const showServices = new Set(services);
+      for (const key of Object.keys(serviceTests)) {
+        if (serviceTests[key](place.tags)) showServices.add(key);
       }
+      [...showServices].slice(0, 4).forEach(key => tagsEl.appendChild(makeTag(serviceLabels[key])));
+
+      const directions = frag.querySelector(".directions-btn");
+      directions.href = `https://maps.apple.com/?daddr=${encodeURIComponent(`${place.lat},${place.lng}`)}&dirflg=d`;
+      directions.setAttribute("aria-label", `Directions to ${place.name}`);
+
+      const osmBtn = frag.querySelector(".osm-btn");
+      osmBtn.href = `https://www.openstreetmap.org/${place.osmType}/${place.osmId}`;
+      osmBtn.setAttribute("aria-label", `Open ${place.name} in OpenStreetMap`);
 
       els.results.appendChild(frag);
     });
 
-    const extra = serviceFiltered ? " • service filters applied after search" : "";
-    setMeta(`${rows.length} result${rows.length === 1 ? "" : "s"} • within ${radiusMiles} mi${extra}`);
+    const within = Number(els.radiusSelect.value);
+    const cacheNote = source === "cached" ? " • cached 5 min" : "";
+    setMeta(`${rows.length} result${rows.length === 1 ? "" : "s"} • within ${within} mi${cacheNote}`);
   }
 
   function makeTag(text, className = "") {
-    const tag = document.createElement("span");
-    tag.className = `tag ${className}`.trim();
-    tag.textContent = text;
-    return tag;
-  }
-
-  function priceSymbols(level) {
-    const lookup = {
-      INEXPENSIVE: "$",
-      MODERATE: "$$",
-      EXPENSIVE: "$$$",
-      VERY_EXPENSIVE: "$$$$"
-    };
-    return lookup[level] || "";
+    const el = document.createElement("span");
+    el.className = `tag ${className}`.trim();
+    el.textContent = text;
+    return el;
   }
 
   function formatDistance(mi) {
@@ -501,9 +485,14 @@
     return `${Math.round(mi)} mi`;
   }
 
-  function buildFallbackMapsUrl(name, address) {
-    const q = [name, address].filter(Boolean).join(" ");
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  function setLoading() {
+    els.emptyState.hidden = true;
+    els.results.innerHTML = `<div class="loading-card"><span class="spinner"></span>Searching free OpenStreetMap data…</div>`;
+    setMeta("Searching nearby food…");
+  }
+
+  function setMeta(text) {
+    els.resultsMeta.textContent = text;
   }
 
   function escapeHtml(value) {
@@ -515,24 +504,18 @@
       .replaceAll("'", "&#039;");
   }
 
-  async function boot() {
+  function boot() {
     cacheEls();
     bindEvents();
     updateFilterCount();
     maybeShowInstallTip();
+    localStorage.removeItem(OLD_GOOGLE_KEY);
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./service-worker.js").catch(console.warn);
     }
 
-    const key = localStorage.getItem(KEY_STORAGE);
-    if (key) {
-      loadGoogleMaps(key).catch(showGoogleLoadError);
-    } else {
-      setTimeout(openSettings, 300);
-    }
-
-    locateUser();
+    locateUser(false);
   }
 
   document.addEventListener("DOMContentLoaded", boot);
