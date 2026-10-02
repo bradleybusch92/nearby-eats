@@ -150,9 +150,10 @@
         <h2>About these results</h2>
         <button class="icon-btn" value="cancel" aria-label="Close">×</button>
       </div>
-      <p>Nearby Eats uses Geoapify Places when a free key is connected, with public OpenStreetMap Overpass servers as a fallback. Results are sorted using the straight-line distance from your device location.</p>
+      <p>Nearby Eats uses Geoapify Places when a free key is connected, with public OpenStreetMap Overpass servers as a fallback. Results are sorted using the straight-line distance from your chosen search origin.</p>
+      <p>You can search from your current device location or type an address, city, ZIP code, hotel, or other place to use as the center point.</p>
       <p>Open Now is evaluated from available opening-hours data. Places without usable hours are excluded when that filter is on.</p>
-      <p>Google Maps and Apple Maps buttons open the matching business in those services. Google ratings, reviews, photos, and other Google-specific details stay on Google Maps rather than being copied into Nearby Eats.</p>
+      <p>Google, Yelp, TripAdvisor, and Apple Maps buttons open the matching business in those services. Their ratings and reviews stay on their own sites rather than being copied into Nearby Eats.</p>
       <button class="primary-btn full-width" value="ok">Got it</button>
     </form>
   </dialog>
@@ -173,7 +174,7 @@
       </div>
       <div class="result-actions">
         <a class="maps-btn directions-btn" target="_blank" rel="noopener">Apple Maps</a>
-        <a class="maps-btn osm-btn" target="_blank" rel="noopener">Google Maps</a>
+        <a class="maps-btn osm-btn" target="_blank" rel="noopener">Google Reviews</a>
       </div>
     </article>
   </template>
@@ -181,6 +182,7 @@
   <script src="https://openingh.openstreetmap.de/build/opening_hours+deps.min.js"></script>
   <script src="./geoapify-proxy.js"></script>
   <script src="./app.js" defer></script>
+  <script src="./address-search.js" defer></script>
   <script src="./map-links.js" defer></script>
 </body>
 </html>
