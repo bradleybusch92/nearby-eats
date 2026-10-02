@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b0d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nearby Eats">
+  <meta name="description" content="Find nearby food and sort it by actual distance.">
+  <title>Nearby Eats</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">FOOD, ACTUALLY SORTED BY DISTANCE</div>
+      <h1>Nearby Eats</h1>
+    </div>
+    <button id="settingsBtn" class="icon-btn" type="button" aria-label="Settings">⚙</button>
+  </header>
+
+  <main>
+    <section class="location-row">
+      <div>
+        <div class="label">Your location</div>
+        <div id="locationStatus" class="location-status">Waiting for location…</div>
+      </div>
+      <button id="locateBtn" class="secondary-btn" type="button">Locate me</button>
+    </section>
+
+    <section class="search-panel">
+      <label for="queryInput">What sounds good?</label>
+      <div class="query-row">
+        <input id="queryInput" type="search" placeholder="tacos, wings, steak, breakfast…" autocomplete="off">
+        <button id="searchBtn" class="primary-btn" type="button">Search</button>
+      </div>
+
+      <div class="quick-row">
+        <select id="categorySelect" aria-label="Food category">
+          <option value="restaurant">All restaurants</option>
+          <option value="fast_food_restaurant">Fast food</option>
+          <option value="american_restaurant">American</option>
+          <option value="barbecue_restaurant">BBQ</option>
+          <option value="breakfast_restaurant">Breakfast</option>
+          <option value="brunch_restaurant">Brunch</option>
+          <option value="hamburger_restaurant">Burgers</option>
+          <option value="chicken_wings_restaurant">Wings</option>
+          <option value="mexican_restaurant">Mexican</option>
+          <option value="taco_restaurant">Tacos</option>
+          <option value="pizza_restaurant">Pizza</option>
+          <option value="chinese_restaurant">Chinese</option>
+          <option value="japanese_restaurant">Japanese</option>
+          <option value="sushi_restaurant">Sushi</option>
+          <option value="thai_restaurant">Thai</option>
+          <option value="indian_restaurant">Indian</option>
+          <option value="italian_restaurant">Italian</option>
+          <option value="seafood_restaurant">Seafood</option>
+          <option value="steak_house">Steakhouse</option>
+          <option value="cajun_restaurant">Cajun</option>
+          <option value="cafe">Cafe</option>
+          <option value="coffee_shop">Coffee</option>
+          <option value="bakery">Bakery</option>
+          <option value="bar_and_grill">Bar &amp; grill</option>
+          <option value="pub">Pub</option>
+          <option value="sports_bar">Sports bar</option>
+        </select>
+        <button id="filtersBtn" class="secondary-btn" type="button">
+          Filters <span id="filterCount" class="filter-count" hidden>0</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="filtersPanel" class="filters-panel" hidden>
+      <div class="filter-grid">
+        <label>
+          <span>Sort</span>
+          <select id="sortSelect">
+            <option value="distance">Nearest first</option>
+            <option value="relevance">Google relevance</option>
+            <option value="rating">Highest rated</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Within</span>
+          <select id="radiusSelect">
+            <option value="1">1 mile</option>
+            <option value="2">2 miles</option>
+            <option value="5" selected>5 miles</option>
+            <option value="10">10 miles</option>
+            <option value="20">20 miles</option>
+            <option value="30">30 miles</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Minimum rating</span>
+          <select id="ratingSelect">
+            <option value="0">Any rating</option>
+            <option value="3.5">3.5+</option>
+            <option value="4">4.0+</option>
+            <option value="4.5">4.5+</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="toggle-row">
+        <input id="openNowCheck" type="checkbox">
+        <span>Open now</span>
+      </label>
+
+      <div class="filter-group">
+        <div class="filter-title">Price</div>
+        <div class="chip-row" id="priceChips">
+          <label class="check-chip"><input type="checkbox" value="INEXPENSIVE"><span>$</span></label>
+          <label class="check-chip"><input type="checkbox" value="MODERATE"><span>$$</span></label>
+          <label class="check-chip"><input type="checkbox" value="EXPENSIVE"><span>$$$</span></label>
+          <label class="check-chip"><input type="checkbox" value="VERY_EXPENSIVE"><span>$$$$</span></label>
+        </div>
+      </div>
+
+      <details class="more-filters">
+        <summary>More filters</summary>
+        <p class="small-note">These are applied to the returned Google results. They can reduce the visible list because Google’s browser search returns at most 20 places.</p>
+        <div class="chip-row" id="serviceChips">
+          <label class="check-chip"><input type="checkbox" value="takeout"><span>Takeout</span></label>
+          <label class="check-chip"><input type="checkbox" value="delivery"><span>Delivery</span></label>
+          <label class="check-chip"><input type="checkbox" value="dinein"><span>Dine-in</span></label>
+          <label class="check-chip"><input type="checkbox" value="outdoor"><span>Outdoor seating</span></label>
+          <label class="check-chip"><input type="checkbox" value="reservable"><span>Reservations</span></label>
+        </div>
+      </details>
+
+      <div class="filter-actions">
+        <button id="clearFiltersBtn" class="text-btn" type="button">Clear filters</button>
+        <button id="applyFiltersBtn" class="primary-btn" type="button">Apply</button>
+      </div>
+    </section>
+
+    <section id="installTip" class="install-tip" hidden>
+      <strong>Install it like an app:</strong> in Safari, tap Share → Add to Home Screen.
+      <button id="dismissInstallTip" class="text-btn" type="button">Dismiss</button>
+    </section>
+
+    <section class="results-header">
+      <div>
+        <h2 id="resultsTitle">Nearby food</h2>
+        <div id="resultsMeta" class="results-meta">Allow location access, then search.</div>
+      </div>
+      <div class="google-attribution" aria-label="Google Maps attribution">Google Maps</div>
+    </section>
+
+    <section id="results" class="results" aria-live="polite"></section>
+
+    <section id="emptyState" class="empty-state">
+      <div class="empty-icon">⌖</div>
+      <h3>Find something close</h3>
+      <p>Your location stays in the browser and is used to search Google Maps Platform for nearby places.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <a href="./privacy.html">Privacy</a>
+    <span>•</span>
+    <a href="./terms.html">Terms</a>
+    <span>•</span>
+    <button id="aboutResultsBtn" class="footer-button" type="button">About results</button>
+  </footer>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" class="dialog-card" id="settingsForm">
+      <div class="dialog-head">
+        <h2>Google Maps API key</h2>
+        <button class="icon-btn" value="cancel" aria-label="Close">×</button>
+      </div>
+      <p>Paste a browser-restricted Google Maps API key. It is saved only in this browser’s local storage and is not written into the GitHub files.</p>
+      <label>
+        <span>API key</span>
+        <input id="apiKeyInput" type="password" placeholder="AIza…" autocomplete="off">
+      </label>
+      <div class="dialog-actions">
+        <button id="removeKeyBtn" class="text-btn danger" type="button">Remove key</button>
+        <button id="saveKeyBtn" class="primary-btn" type="button">Save key</button>
+      </div>
+      <p class="small-note">Enable <strong>Maps JavaScript API</strong> and <strong>Places API (New)</strong> in the same Google Cloud project.</p>
+    </form>
+  </dialog>
+
+  <dialog id="aboutResultsDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head">
+        <h2>About these results</h2>
+        <button class="icon-btn" value="cancel" aria-label="Close">×</button>
+      </div>
+      <p>When Google Maps searches for businesses or places near a location, several factors can influence the returned results, including relevance, distance, and prominence.</p>
+      <p>This app can request Google’s distance ranking, then calculates each displayed distance from your device location and sorts the list again when “Nearest first” is selected.</p>
+      <button class="primary-btn full-width" value="ok">Got it</button>
+    </form>
+  </dialog>
+
+  <template id="resultTemplate">
+    <article class="place-card">
+      <div class="place-main">
+        <div class="place-rank"></div>
+        <div class="place-info">
+          <div class="place-topline">
+            <h3 class="place-name"></h3>
+            <div class="distance-badge"></div>
+          </div>
+          <div class="place-details"></div>
+          <div class="place-tags"></div>
+          <div class="provider-attributions"></div>
+        </div>
+      </div>
+      <a class="maps-btn" target="_blank" rel="noopener">Open in Google Maps</a>
+    </article>
+  </template>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
