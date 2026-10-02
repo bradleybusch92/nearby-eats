@@ -1,10 +1,11 @@
-const CACHE_NAME = "nearby-eats-v5-address-reviews";
+const CACHE_NAME = "nearby-eats-v6-tomtom-merged";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./osm.css",
   "./geoapify-proxy.js",
+  "./tomtom-proxy.js",
   "./app.js",
   "./address-search.js",
   "./map-links.js",
